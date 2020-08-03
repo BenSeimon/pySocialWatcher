@@ -1,4 +1,4 @@
-import main
+from . import main
 import logging
 
 watcherAPI = main.PySocialWatcher

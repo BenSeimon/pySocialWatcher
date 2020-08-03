@@ -2,7 +2,7 @@
 import sys
 
 
-from utils import *
+from .utils import *
 
 
 class PySocialWatcher:
@@ -205,7 +205,7 @@ class PySocialWatcher:
         if not constants.INPUT_NAME_FIELD in input_data_json:
             raise FatalException("Input should have key: " + constants.INPUT_NAME_FIELD)
         # Check if every field in input is supported
-        for field in input_data_json.keys():
+        for field in list(input_data_json.keys()):
             if not field in constants.ALLOWED_FIELDS_IN_INPUT:
                 raise FatalException("Field not supported: " + field)
 
@@ -214,7 +214,7 @@ class PySocialWatcher:
         if constants.PERFORM_AND_BETWEEN_GROUPS_INPUT_FIELD in input_data_json:
             for groups_ids in input_data_json[constants.PERFORM_AND_BETWEEN_GROUPS_INPUT_FIELD]:
                 interests_by_group_to_AND = get_interests_by_group_to_AND(input_data_json,groups_ids)
-                list_of_ANDS_between_groups = list(itertools.product(*interests_by_group_to_AND.values()))
+                list_of_ANDS_between_groups = list(itertools.product(*list(interests_by_group_to_AND.values())))
                 add_list_of_ANDS_to_input(list_of_ANDS_between_groups, input_data_json)
 
     @staticmethod
@@ -240,4 +240,4 @@ class PySocialWatcher:
 
     @staticmethod
     def print_bad_joke():
-        print "I used to think the brain was the most important organ.\nThen I thought, look what’s telling me that."
+        print("I used to think the brain was the most important organ.\nThen I thought, look what’s telling me that.")

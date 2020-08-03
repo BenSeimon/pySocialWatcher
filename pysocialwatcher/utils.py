@@ -2,7 +2,7 @@
 import json
 from tabulate import tabulate
 import pandas as pd
-import constants
+from . import constants
 import itertools
 import logging
 import coloredlogs
@@ -39,7 +39,7 @@ class FatalException(Exception):
 def print_error_warning(error_json, params):
     print_warning("Facebook Error Code: " + str(error_json["error"]["code"]))
     print_warning("Facebook Error Message: " + str(error_json["error"]["message"]))
-    if error_json["error"].has_key("error_user_title") and error_json["error"].has_key("error_user_msg"):
+    if "error_user_title" in error_json["error"] and "error_user_msg" in error_json["error"]:
         print_warning("Facebook: " + str(error_json["error"]["error_user_title"]) + "\n" + str(
             error_json["error"]["error_user_msg"]))
     print_warning("Facebook Trace Id: " + str(error_json["error"]["fbtrace_id"]))
@@ -129,7 +129,7 @@ def trigger_facebook_call(index, row, token, account, shared_queue):
 #        print_warning("request failed because %s"%(e))
 
 def add_mocked_column(dataframe):
-    dataframe["mock_response"] = dataframe["response"].apply(lambda response: True if (constants.MOCK_RESPONSE_FIELD in response) else False)
+    dataframe["mock_response"] = dataframe["response"].apply(lambda response: True if (constants.MOCK_RESPONSE_FIELD in str(response)) else False)
     return dataframe
 
 def add_timestamp(dataframe):
@@ -158,11 +158,11 @@ def trigger_request_process_and_return_response(rows_to_request):
         list_process.append(p)
 
     # Starting process
-    map(lambda p: p.start(), list_process)
+    list([p.start() for p in list_process])
     # Stop process
-    map(lambda p: p.join(), list_process)
+    list([p.join() for p in list_process])
     #Check for Exception
-    map(lambda p: check_exception(p), list_process)
+    list([check_exception(p) for p in list_process])
 
     # Put things from shared list to normal list
     while shared_queue.qsize() != 0:
@@ -226,12 +226,11 @@ def print_warning(message):
 
 
 def load_json_data_from_response(response):
-    response_content = response.content.encode('utf-8')
-    return json.loads(response_content)
+    return json.loads(response.content)
 
 
 def print_dataframe(df):
-    print tabulate(df, headers='keys', tablefmt='psql', floatfmt=".0f")
+    print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=".0f"))
 
 
 def build_initial_collection_dataframe():
@@ -246,22 +245,22 @@ def get_all_combinations_from_input(input_data_json):
                 field_content = input_data_json[field]
                 to_combine_fields[field] = field_content
             if isinstance(input_data_json[field], dict):
-                for intra_field_key in input_data_json[field].keys():
+                for intra_field_key in list(input_data_json[field].keys()):
                     to_combine_fields[intra_field_key] = input_data_json[field][intra_field_key]
 
                 # to_combine_fields[field] = build_AND_intra_field_combinations(input_data_json[field])
         except KeyError:
             print_warning("Field not expecified: " + field)
 
-    for field in to_combine_fields.keys():
+    for field in list(to_combine_fields.keys()):
         for index, value in enumerate(to_combine_fields[field]):
             to_combine_fields[field][index] = (field, value)
-    all_combinations = list(itertools.product(*to_combine_fields.values()))
+    all_combinations = list(itertools.product(*list(to_combine_fields.values())))
     return all_combinations
 
 def build_AND_intra_field_combinations(intra_field_data):
     intra_fields = []
-    for field in intra_field_data.values():
+    for field in list(intra_field_data.values()):
         intra_fields.append(field)
     teste = list(itertools.product(*intra_fields))
     import ipdb;ipdb.set_trace()
@@ -302,7 +301,7 @@ def generate_collection_request_from_combination(current_combination, input_data
 def select_common_fields_in_targeting(targeting, input_combination_dictionary):
     # Selecting Geolocation
     geo_location = input_combination_dictionary[constants.INPUT_GEOLOCATION_FIELD]
-    if geo_location.has_key(constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD):
+    if constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD in geo_location:
         location_type = geo_location[constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD]
     else:
         location_type = constants.DEFAULT_GEOLOCATION_LOCATION_TYPE_FIELD
@@ -313,15 +312,15 @@ def select_common_fields_in_targeting(targeting, input_combination_dictionary):
     }
     # Selecting Age
     age_range = input_combination_dictionary[constants.INPUT_AGE_RANGE_FIELD]
-    targeting[constants.API_MIN_AGE_FIELD] = age_range[constants.MIN_AGE] if age_range.has_key(constants.MIN_AGE) else None
-    targeting[constants.API_MAX_AGE_FIELD] = age_range[constants.MAX_AGE] if age_range.has_key(constants.MAX_AGE) else None
+    targeting[constants.API_MIN_AGE_FIELD] = age_range[constants.MIN_AGE] if constants.MIN_AGE in age_range else None
+    targeting[constants.API_MAX_AGE_FIELD] = age_range[constants.MAX_AGE] if constants.MAX_AGE in age_range else None
 
     # Selecting genders
     gender = input_combination_dictionary[constants.INPUT_GENDER_FIELD]
     targeting[constants.API_GENDER_FIELD] = [gender]
 
     # Selecting Languages
-    if input_combination_dictionary.has_key(constants.INPUT_LANGUAGE_FIELD):
+    if constants.INPUT_LANGUAGE_FIELD in input_combination_dictionary:
         languages = input_combination_dictionary[constants.INPUT_LANGUAGE_FIELD]
         if languages:
             targeting[constants.API_LANGUAGES_FIELD] = languages["values"]
@@ -380,13 +379,13 @@ def post_process_collection(collection_dataframe):
 def select_advance_targeting_type_array_ids(segment_type, input_value, targeting):
     api_field_name = get_api_field_name(segment_type)
     if input_value:
-        if input_value.has_key("or"):
+        if "or" in input_value:
             or_query = []
             for or_id in input_value["or"]:
                 or_query.append({"id" : or_id})
             targeting["flexible_spec"].append({api_field_name: or_query})
 
-        if input_value.has_key("and"):
+        if "and" in input_value:
             for id_and in input_value["and"]:
                 ## TODO: make the behavior AND query request less hacky
                 if(segment_type == constants.INPUT_BEHAVIOR_FIELD or segment_type == constants.INPUT_INCOME_FIELD):
@@ -396,22 +395,22 @@ def select_advance_targeting_type_array_ids(segment_type, input_value, targeting
                 else:
                     targeting["flexible_spec"].append({segment_type: {"id" : id_and}})
 
-        if input_value.has_key("not"):
+        if "not" in input_value:
             if not "exclusions" in targeting:
                 targeting["exclusions"] = {}
-            if not api_field_name in targeting["exclusions"].keys():
+            if not api_field_name in list(targeting["exclusions"].keys()):
                 targeting["exclusions"][api_field_name] = []
             for id_not in input_value["not"]:
                 targeting["exclusions"][api_field_name].append({"id" : id_not})
 
-        if input_value.has_key("and_ors"):
+        if "and_ors" in input_value:
             for or_ids in input_value["and_ors"]:
                 or_query = []
                 for or_id in or_ids:
                     or_query.append({"id" : or_id})
                 targeting["flexible_spec"].append({segment_type: or_query})
 
-        if not input_value.has_key("or") and not input_value.has_key("and") and not input_value.has_key("not") and not input_value.has_key("and_ors"):
+        if "or" not in input_value and "and" not in input_value and "not" not in input_value and "and_ors" not in input_value:
             raise JsonFormatException("Something wrong with: " + str(input_value))
 
 
@@ -435,7 +434,7 @@ def select_advance_targeting_type_array_integer(segment_type, input_value, targe
         elif "not" in input_value:
             if not "exclusions" in targeting:
                 targeting["exclusions"] = {}
-            if not api_field_name in targeting["exclusions"].keys():
+            if not api_field_name in list(targeting["exclusions"].keys()):
                 targeting["exclusions"][api_field_name] = []
             for value in input_value["not"]:
                 targeting["exclusions"][api_field_name].append(value)
@@ -448,10 +447,10 @@ def select_advance_targeting_fields(targeting, input_combination_dictionary):
     targeting["flexible_spec"] = []
 
     for advance_field in constants.ADVANCE_TARGETING_FIELDS_TYPE_ARRAY_IDS:
-        if input_combination_dictionary.has_key(advance_field):
+        if advance_field in input_combination_dictionary:
             select_advance_targeting_type_array_ids(advance_field, input_combination_dictionary[advance_field], targeting)
     for advance_field in constants.ADVANCE_TARGETING_FIELDS_TYPE_ARRAY_INTEGER:
-        if input_combination_dictionary.has_key(advance_field):
+        if advance_field in input_combination_dictionary:
             select_advance_targeting_type_array_integer(advance_field, input_combination_dictionary[advance_field], targeting)
     return targeting
 
@@ -478,7 +477,7 @@ def get_token_and_account_number_or_wait():
         used_tokens_time_map = {}
     while True:
         for token, account in constants.TOKENS:
-            if used_tokens_time_map.has_key(token):
+            if token in used_tokens_time_map:
                 last_used_time = used_tokens_time_map[token]
                 time_since_used = time.time() - last_used_time
                 if time_since_used > constants.SLEEP_TIME:
