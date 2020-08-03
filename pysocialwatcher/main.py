@@ -88,7 +88,7 @@ class PySocialWatcher:
     def get_kml_given_geolocation(location_type, list_location_codes):
         """
         location_type: countries, regions, cities, zips, places, custom_locations, geo_markets, electoral_districts, country_groups
-        location_code: region code, country two letters accronym, so on.
+        location_code: region code, country two letters acronym, so on.
 
         Example: location_type = "countries", location_code = ["BR","CL","AT","US","QA"]
         """
@@ -122,6 +122,7 @@ class PySocialWatcher:
     def print_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None):
         geo_locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(query, location_types, region_id=region_id, country_code=country_code)
         print_dataframe(geo_locations)
+        return geo_locations
 
     @staticmethod
     def print_interests_given_query(interest_query):
