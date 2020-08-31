@@ -11,6 +11,7 @@ from multiprocessing import Process, Manager
 import numpy
 import requests
 import ast
+import os
 
 coloredlogs.install(level=logging.INFO)
 
@@ -227,6 +228,11 @@ def save_after_collecting_dataframe_without_full_response(dataframe, output_dir=
     print_dataframe(dataframe)
     print_info("Saving after collecting file: " + constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME_WITHOUT_FULL_RESPONSE)
     dataframe.to_csv(output_dir + constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME_WITHOUT_FULL_RESPONSE)
+
+
+def remove_temporary_dataframes():
+    for file in [constants.DATAFRAME_SKELETON_FILE_NAME, constants.DATAFRAME_TEMPORARY_COLLECTION_FILE_NAME]:
+        os.remove(file)
 
 
 def print_warning(message):
@@ -517,6 +523,6 @@ def from_FB_polygons_to_KML(poly):
     for p in poly:
         out += "<Polygon><outerBoundaryIs><LinearRing><coordinates>"
         for pair in p:
-            out += " %s,%s" % (pair["lng"],pair["lat"])
+            out += " %s,%s" % (pair["lng"], pair["lat"])
         out += "</coordinates></LinearRing></outerBoundaryIs></Polygon>"
     return out
