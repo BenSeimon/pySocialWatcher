@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='pysocialwatcher',
-      version='0.2b',
+      version='0.3',
       description='pySocialWatcher : Social Watcher through Facebook Marketing API',
       url='https://github.com/maraujo/pySocialWatcher',
       long_description="""
