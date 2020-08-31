@@ -14,6 +14,7 @@ import ast
 
 coloredlogs.install(level=logging.INFO)
 
+
 class RequestException(Exception):
     def __init__(self, value):
         self.value = value
@@ -29,12 +30,14 @@ class JsonFormatException(Exception):
     def __str__(self):
         return repr(self.value)
 
+
 class FatalException(Exception):
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
         return repr(self.value)
+
 
 def print_error_warning(error_json, params):
     print_warning("Facebook Error Code: " + str(error_json["error"]["code"]))
@@ -45,6 +48,7 @@ def print_error_warning(error_json, params):
     print_warning("Facebook Trace Id: " + str(error_json["error"]["fbtrace_id"]))
     print_warning("Request Params : " + str(params))
 
+
 def get_dataframe_from_json_response_query_data(json_response):
     dataframe = pd.DataFrame()
     for entry in json_response["data"]:
@@ -54,16 +58,20 @@ def get_dataframe_from_json_response_query_data(json_response):
         dataframe = dataframe.append(entry_details, ignore_index=True)
     return dataframe
 
+
 def handle_send_request_error(response, url, params, tryNumber):
     try:
         error_json = json.loads(response.text)
-        if error_json["error"]["code"] == constants.API_UNKOWN_ERROR_CODE_1 or error_json["error"]["code"] == constants.API_UNKOWN_ERROR_CODE_2:
+        if error_json["error"]["code"] == constants.API_UNKOWN_ERROR_CODE_1 or error_json["error"][
+            "code"] == constants.API_UNKOWN_ERROR_CODE_2:
             print_error_warning(error_json, params)
             time.sleep(constants.INITIAL_TRY_SLEEP_TIME * tryNumber)
             return send_request(url, params, tryNumber)
-        elif error_json["error"]["code"] == constants.INVALID_PARAMETER_ERROR and "error_subcode" in error_json["error"] and error_json["error"]["error_subcode"] == constants.FEW_USERS_IN_CUSTOM_LOCATIONS_SUBCODE_ERROR:
+        elif error_json["error"]["code"] == constants.INVALID_PARAMETER_ERROR and "error_subcode" in error_json[
+            "error"] and error_json["error"]["error_subcode"] == constants.FEW_USERS_IN_CUSTOM_LOCATIONS_SUBCODE_ERROR:
             return get_fake_response()
-        elif "message" in error_json["error"] and "Invalid zip code" in error_json["error"]["message"] and constants.INGORE_INVALID_ZIP_CODES:
+        elif "message" in error_json["error"] and "Invalid zip code" in error_json["error"][
+            "message"] and constants.INGORE_INVALID_ZIP_CODES:
             print_warning("Invalid Zip Code:" + str(params[constants.TARGETING_SPEC_FIELD]))
             return get_fake_response()
         else:
@@ -78,10 +86,11 @@ def handle_send_request_error(response, url, params, tryNumber):
         logging.error(e)
         raise FatalException(str(response.text))
 
-def send_request(url, params, tryNumber = 0):
+
+def send_request(url, params, tryNumber=0):
     tryNumber += 1
     if tryNumber >= constants.MAX_NUMBER_TRY:
-        print_warning("Maxium Number of Tries reached. Failing.")
+        print_warning("Maximum Number of Tries reached. Failing.")
         raise FatalException("Maximum try reached.")
     try:
         response = requests.get(url, params=params, timeout=constants.REQUESTS_TIMEOUT)
@@ -108,6 +117,7 @@ def call_request_fb(row, token, account):
     response = send_request(url, payload)
     return response.content
 
+
 def get_fake_response():
     response = requests.models.Response()
     response._content = constants.FAKE_DATA_RESPONSE_CONTENT
@@ -125,12 +135,17 @@ def trigger_facebook_call(index, row, token, account, shared_queue):
         print_warning("Row: " + str(row))
         print_warning("It will try again later")
         shared_queue.put((index, numpy.nan))
+
+
 #    except Exception, e:
 #        print_warning("request failed because %s"%(e))
 
+
 def add_mocked_column(dataframe):
-    dataframe["mock_response"] = dataframe["response"].apply(lambda response: True if (constants.MOCK_RESPONSE_FIELD in str(response)) else False)
+    dataframe["mock_response"] = dataframe["response"].apply(
+        lambda response: True if (constants.MOCK_RESPONSE_FIELD in str(response)) else False)
     return dataframe
+
 
 def add_timestamp(dataframe):
     dataframe["timestamp"] = constants.UNIQUE_TIME_ID
@@ -201,20 +216,22 @@ def save_response_in_dataframe(shared_queue_list, df):
         df.loc[result_index, "response"] = result_response
 
 
-def save_skeleton_dataframe(dataframe, output_dir = ""):
+def save_skeleton_dataframe(dataframe, output_dir=""):
     print_info("Saving Skeleton file: " + constants.DATAFRAME_SKELETON_FILE_NAME)
     dataframe.to_csv(output_dir + constants.DATAFRAME_SKELETON_FILE_NAME)
 
-def save_temporary_dataframe(dataframe, output_dir = ""):
+
+def save_temporary_dataframe(dataframe, output_dir=""):
     print_info("Saving temporary file: " + constants.DATAFRAME_TEMPORARY_COLLECTION_FILE_NAME)
     dataframe.to_csv(output_dir + constants.DATAFRAME_TEMPORARY_COLLECTION_FILE_NAME)
 
 
-def save_after_collecting_dataframe(dataframe, output_dir = ""):
+def save_after_collecting_dataframe(dataframe, output_dir=""):
     print_info("Saving after collecting file: " + constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME)
     dataframe.to_csv(output_dir + constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME)
 
-def save_after_collecting_dataframe_without_full_response(dataframe, output_dir = ""):
+
+def save_after_collecting_dataframe_without_full_response(dataframe, output_dir=""):
     dataframe = dataframe.drop('response', 1)
     print_dataframe(dataframe)
     print_info("Saving after collecting file: " + constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME_WITHOUT_FULL_RESPONSE)
@@ -234,7 +251,7 @@ def print_dataframe(df):
 
 
 def build_initial_collection_dataframe():
-    return pd.DataFrame(columns= constants.DATAFRAME_COLUMNS)
+    return pd.DataFrame(columns=constants.DATAFRAME_COLUMNS)
 
 
 def get_all_combinations_from_input(input_data_json):
@@ -248,7 +265,6 @@ def get_all_combinations_from_input(input_data_json):
                 for intra_field_key in list(input_data_json[field].keys()):
                     to_combine_fields[intra_field_key] = input_data_json[field][intra_field_key]
 
-                # to_combine_fields[field] = build_AND_intra_field_combinations(input_data_json[field])
         except KeyError:
             print_warning("Field not expecified: " + field)
 
@@ -258,17 +274,8 @@ def get_all_combinations_from_input(input_data_json):
     all_combinations = list(itertools.product(*list(to_combine_fields.values())))
     return all_combinations
 
-def build_AND_intra_field_combinations(intra_field_data):
-    intra_fields = []
-    for field in list(intra_field_data.values()):
-        intra_fields.append(field)
-    teste = list(itertools.product(*intra_fields))
-    import ipdb;ipdb.set_trace()
-    pass
 
-
-
-def add_list_of_ANDS_to_input(list_of_ANDS_between_groups,input_data_json):
+def add_list_of_ANDS_to_input(list_of_ANDS_between_groups, input_data_json):
     for interests_to_AND in list_of_ANDS_between_groups:
         names = []
         and_ors = []
@@ -278,15 +285,15 @@ def add_list_of_ANDS_to_input(list_of_ANDS_between_groups,input_data_json):
                 raise Exception("Only AND of ors are supported")
             and_ors.append(interest_to_AND["or"])
         new_and_interest = {
-            constants.INPUT_NAME_FIELD : " AND ".join(names),
-            "and_ors" : and_ors,
-            "isAND" : True
+            constants.INPUT_NAME_FIELD: " AND ".join(names),
+            "and_ors": and_ors,
+            "isAND": True
         }
         input_data_json[constants.INPUT_INTEREST_FIELD].append(new_and_interest)
 
 
 def generate_collection_request_from_combination(current_combination, input_data):
-    targeting = build_targeting(current_combination,input_data)
+    targeting = build_targeting(current_combination, input_data)
     dataframe_row = {}
     for field in current_combination:
         field_name = field[0]
@@ -334,8 +341,9 @@ def get_api_field_name(field_name):
 
 def process_dau_audience_from_response(literal_response):
     aud = json.loads(literal_response)["data"][0]
-    audience=aud["estimate_dau"]
+    audience = aud["estimate_dau"]
     return int(audience)
+
 
 def process_mau_audience_from_response(literal_response):
     aud = json.loads(literal_response)["data"][0]
@@ -382,7 +390,7 @@ def select_advance_targeting_type_array_ids(segment_type, input_value, targeting
         if "or" in input_value:
             or_query = []
             for or_id in input_value["or"]:
-                or_query.append({"id" : or_id})
+                or_query.append({"id": or_id})
             targeting["flexible_spec"].append({api_field_name: or_query})
 
         if "and" in input_value:
@@ -393,7 +401,7 @@ def select_advance_targeting_type_array_ids(segment_type, input_value, targeting
                         targeting['flexible_spec'].append({api_field_name : []})
                     targeting['flexible_spec'][1][api_field_name].append({"id" : id_and})
                 else:
-                    targeting["flexible_spec"].append({segment_type: {"id" : id_and}})
+                    targeting["flexible_spec"].append({segment_type: {"id": id_and}})
 
         if "not" in input_value:
             if not "exclusions" in targeting:
@@ -401,13 +409,13 @@ def select_advance_targeting_type_array_ids(segment_type, input_value, targeting
             if not api_field_name in list(targeting["exclusions"].keys()):
                 targeting["exclusions"][api_field_name] = []
             for id_not in input_value["not"]:
-                targeting["exclusions"][api_field_name].append({"id" : id_not})
+                targeting["exclusions"][api_field_name].append({"id": id_not})
 
         if "and_ors" in input_value:
             for or_ids in input_value["and_ors"]:
                 or_query = []
                 for or_id in or_ids:
-                    or_query.append({"id" : or_id})
+                    or_query.append({"id": or_id})
                 targeting["flexible_spec"].append({segment_type: or_query})
 
         if "or" not in input_value and "and" not in input_value and "not" not in input_value and "and_ors" not in input_value:
@@ -425,6 +433,7 @@ def get_interests_by_group_to_AND(input_data_json, groups_ids):
                 if interest_group_id in interests_by_group_to_AND:
                     interests_by_group_to_AND[interest_group_id].append(interest_input)
     return interests_by_group_to_AND
+
 
 def select_advance_targeting_type_array_integer(segment_type, input_value, targeting):
     api_field_name = get_api_field_name(segment_type)
@@ -448,10 +457,12 @@ def select_advance_targeting_fields(targeting, input_combination_dictionary):
 
     for advance_field in constants.ADVANCE_TARGETING_FIELDS_TYPE_ARRAY_IDS:
         if advance_field in input_combination_dictionary:
-            select_advance_targeting_type_array_ids(advance_field, input_combination_dictionary[advance_field], targeting)
+            select_advance_targeting_type_array_ids(advance_field, input_combination_dictionary[advance_field],
+                                                    targeting)
     for advance_field in constants.ADVANCE_TARGETING_FIELDS_TYPE_ARRAY_INTEGER:
         if advance_field in input_combination_dictionary:
-            select_advance_targeting_type_array_integer(advance_field, input_combination_dictionary[advance_field], targeting)
+            select_advance_targeting_type_array_integer(advance_field, input_combination_dictionary[advance_field],
+                                                        targeting)
     return targeting
 
 
@@ -461,6 +472,7 @@ def select_publisher_platform(targeting, input_data):
     if constants.API_PUBLISHER_PLATFORMS_FIELD in input_data:
         platform = input_data[constants.API_PUBLISHER_PLATFORMS_FIELD]
     targeting[constants.API_PUBLISHER_PLATFORMS_FIELD] = platform
+
 
 def build_targeting(current_combination, input_data):
     targeting = {}
@@ -492,8 +504,11 @@ def get_token_and_account_number_or_wait():
 def print_collecting_progress(uncomplete_df, df):
     full_size = len(df)
     uncomplete_df_size = len(uncomplete_df)
-    print_info("Collecting... Completed: {:.2f}% , {:d}/{:d}".format((float(full_size - uncomplete_df_size) / full_size * 100),
-                                                                     full_size - uncomplete_df_size, full_size))
+    print_info(
+        "Collecting... Completed: {:.2f}% , {:d}/{:d}".format((float(full_size - uncomplete_df_size) / full_size * 100),
+                                                              full_size - uncomplete_df_size, full_size))
+
+
 def send_dumb_query(token, account):
     try:
         row = pd.Series()
@@ -503,7 +518,8 @@ def send_dumb_query(token, account):
         print_warning("Token or Account Number Error:")
         print_warning("Token:" + token)
         print_warning("Account:" + account)
-        raise  error
+        raise error
+
 
 def from_FB_polygons_to_KML(poly):
     out = ""
