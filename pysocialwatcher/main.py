@@ -6,6 +6,25 @@ from .utils import *
 
 
 class PySocialWatcher:
+
+    def __init__(self, api_version="8.0", sleep_time=8, save_every_x=300, outputname=None):
+
+        constants.REACHESTIMATE_URL = "https://graph.facebook.com/v" + api_version + "/act_{}/delivery_estimate"
+        constants.GRAPH_SEARCH_URL = "https://graph.facebook.com/v" + api_version + "/search"
+        constants.TARGETING_SEARCH_URL = "https://graph.facebook.com/v" + api_version + "/act_{}/targetingsearch"
+        constants.SLEEP_TIME = sleep_time
+        constants.SAVE_EVERY = save_every_x
+
+        constants.UNIQUE_TIME_ID = str(time.time()).split(".")[0]
+
+        constants.DATAFRAME_SKELETON_FILE_NAME = "dataframe_skeleton_" + constants.UNIQUE_TIME_ID + ".csv.gz"
+        constants.DATAFRAME_TEMPORARY_COLLECTION_FILE_NAME = "dataframe_collecting_" + constants.UNIQUE_TIME_ID + ".csv.gz"
+        constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME = "dataframe_collected_finished_" + constants.UNIQUE_TIME_ID + ".csv.gz"
+        constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME_WITHOUT_FULL_RESPONSE = "collect_finished_clean" + constants.UNIQUE_TIME_ID + ".csv.gz"
+
+        if outputname:
+            constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME = outputname
+
     @staticmethod
     def load_credentials_file(token_file_path):
         with open(token_file_path, "r") as token_file:
@@ -169,7 +188,7 @@ class PySocialWatcher:
         return dataframe
 
     @staticmethod
-    def perform_collection_data_on_facebook(collection_dataframe, output_dir = ""):
+    def perform_collection_data_on_facebook(collection_dataframe, output_dir = "", remove_tmp_files=False):
         # Call each requests builded
         processed_rows_after_saved = 0
         dataframe_with_uncompleted_requests = collection_dataframe[pd.isnull(collection_dataframe["response"])]
@@ -191,6 +210,10 @@ class PySocialWatcher:
         save_temporary_dataframe(collection_dataframe, output_dir)
         post_process_collection(collection_dataframe)
         save_after_collecting_dataframe(collection_dataframe, output_dir)
+
+        if remove_tmp_files:
+            remove_temporary_dataframes()
+
         return collection_dataframe
 
     @staticmethod
@@ -219,12 +242,12 @@ class PySocialWatcher:
                 add_list_of_ANDS_to_input(list_of_ANDS_between_groups, input_data_json)
 
     @staticmethod
-    def run_data_collection(json_input_file_path, output_dir = ""):
+    def run_data_collection(json_input_file_path, output_dir = "", remove_tmp_files=False):
         input_data_json = PySocialWatcher.read_json_file(json_input_file_path)
         PySocialWatcher.expand_input_if_requested(input_data_json)
         PySocialWatcher.check_input_integrity(input_data_json)
         collection_dataframe = PySocialWatcher.build_collection_dataframe(input_data_json, output_dir)
-        collection_dataframe = PySocialWatcher.perform_collection_data_on_facebook(collection_dataframe, output_dir)
+        collection_dataframe = PySocialWatcher.perform_collection_data_on_facebook(collection_dataframe, output_dir, remove_tmp_files)
         return collection_dataframe
 
     @staticmethod
@@ -233,11 +256,6 @@ class PySocialWatcher:
         collection_dataframe = PySocialWatcher.perform_collection_data_on_facebook(collection_dataframe)
         return collection_dataframe
 
-    @staticmethod
-    def config(sleep_time = 8, save_every = 300, save_after_empty_dataframe = False):
-        constants.SLEEP_TIME = sleep_time
-        constants.SAVE_EVERY = save_every
-        constants.SAVE_EMPTY = save_after_empty_dataframe
 
     @staticmethod
     def print_bad_joke():
