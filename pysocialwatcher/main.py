@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import sys
-
-
 from .utils import *
+import string
 
 
 class PySocialWatcher:
@@ -82,7 +80,7 @@ class PySocialWatcher:
         return pd.DataFrame(json_response["data"])
 
     @staticmethod
-    def get_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None, limit=5000):
+    def get_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None, limit=1000):
         request_payload = {
             'type': 'adgeolocation',
             'location_types': location_types,
@@ -106,6 +104,8 @@ class PySocialWatcher:
     @staticmethod
     def get_kml_given_geolocation(location_type, list_location_codes):
         """
+
+        :param
         location_type: countries, regions, cities, zips, places, custom_locations, geo_markets, electoral_districts, country_groups
         location_code: region code, country two letters acronym, so on.
 
@@ -121,16 +121,75 @@ class PySocialWatcher:
         json_response = load_json_data_from_response(response)
         df = pd.DataFrame(json_response["data"])
         if df.empty:
-            return
+            return None
 
-        ans = {"name":[], "kml":[]}
+        ans = {"name":[], "kml":[], "key": []}
         for location in df[location_type]:
             ans["name"].append(location["name"])
+            ans["key"].append(location["key"])
             if "polygons" in location:
                 ans["kml"].append(from_FB_polygons_to_KML(location["polygons"]))
             else:
                 ans["kml"].append("Polygons not found.")
         return pd.DataFrame(ans)
+
+    @staticmethod
+    def get_KMLs_for_regions_in_country(country_code):
+        """
+
+        :param country_code: one single country code (e.g., "BR","CL","AT","US","QA")
+
+        :return:
+        """
+        locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, ["region"],
+                                                                                    country_code=country_code)
+        print("Obtained %d regions." % (locations.shape[0]))
+        kmls = PySocialWatcher.get_kml_given_geolocation("regions", list(locations["key"].values))
+        print("Obtained %d KMLs." % (kmls.shape[0]))
+
+        return locations, kmls
+
+    @staticmethod
+    def get_all_cities_given_country_code(country_code):
+        # Get all regions
+        regions = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, ["region"],
+                                                                                  country_code=country_code)
+        regions = regions[regions["country_code"] == country_code]
+        dfs = []
+        for idx, row in regions.iterrows():
+            print("Getting cities for region named '%s' (id = %s)" % (row["name"], row["key"]))
+            df = PySocialWatcher.systematically_get_all_cities(country_code=country_code, region_id=row["key"])
+
+            if not df.empty:
+                dfs.append(df)
+
+        concated = None if len(dfs) == 0 else pd.concat(dfs).drop_duplicates(subset="key").reset_index(drop=True)
+
+        return concated
+
+    @staticmethod
+    def systematically_get_all_cities(country_code=None, region_id=None, prefix=""):
+        dfs = []
+
+        for l in string.ascii_lowercase:
+            print("Getting cities that start with %s" % (prefix + l))
+            try:
+                df = PySocialWatcher.get_geo_locations_given_query_and_location_type(prefix + l, ["city"],
+                                                                                country_code=country_code,
+                                                                                region_id=region_id)
+            except FatalException:
+                print("ERROR. Restricting search...")
+                df = PySocialWatcher.systematically_get_all_cities(country_code=country_code,
+                                                                   region_id=region_id,
+                                                                   prefix=prefix + l)
+
+            if df is not None and not df.empty:
+                df = df[df["type"] == "city"]
+                dfs.append(df)
+
+        concated = None if len(dfs) == 0 else pd.concat(dfs).drop_duplicates(subset="key").reset_index(drop=True)
+
+        return concated
 
     @staticmethod
     def print_search_targeting_from_query_dataframe(query):
@@ -141,7 +200,6 @@ class PySocialWatcher:
     def print_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None):
         geo_locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(query, location_types, region_id=region_id, country_code=country_code)
         print_dataframe(geo_locations)
-        return geo_locations
 
     @staticmethod
     def print_interests_given_query(interest_query):
