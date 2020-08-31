@@ -105,14 +105,12 @@ def send_request(url, params, tryNumber=0):
 def call_request_fb(row, token, account):
     target_request = row[constants.TARGETING_FIELD]
     payload = {
-        'currency': 'USD',
-        'optimize_for': "NONE",
         'optimization_goal': "AD_RECALL_LIFT",
         'targeting_spec': json.dumps(target_request),
         'access_token': token,
     }
-#    payload_str = str(payload)
-#    print_warning("\tSending in request: %s"%(payload_str))
+    payload_str = str(payload)
+    print_warning("\tSending in request: %s" % (payload_str))
     url = constants.REACHESTIMATE_URL.format(account)
     response = send_request(url, payload)
     return response.content
@@ -164,20 +162,13 @@ def trigger_request_process_and_return_response(rows_to_request):
     process_manager = Manager()
     shared_queue = process_manager.Queue()
     shared_queue_list = []
-    list_process = []
 
     # Trigger Process in rows
     for index, row in rows_to_request.iterrows():
         token, account = get_token_and_account_number_or_wait()
         p = Process(target=trigger_facebook_call, args=(index, row, token, account, shared_queue))
-        list_process.append(p)
-
-    # Starting process
-    list([p.start() for p in list_process])
-    # Stop process
-    list([p.join() for p in list_process])
-    #Check for Exception
-    list([check_exception(p) for p in list_process])
+        p.start()
+        p.join()
 
     # Put things from shared list to normal list
     while shared_queue.qsize() != 0:
