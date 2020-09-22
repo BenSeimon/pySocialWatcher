@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from .utils import *
 import string
+import xml.etree.ElementTree as ET
 
+# TODOs:
+# Check pySocialWatcher for reindex that is creating a "Unnamed: 0"
 
 class PySocialWatcher:
 
@@ -22,6 +25,10 @@ class PySocialWatcher:
 
         if outputname:
             constants.DATAFRAME_AFTER_COLLECTION_FILE_NAME = outputname
+
+    @staticmethod
+    def load_credentials_direct(token, account_number):
+        PySocialWatcher.add_token_and_account_number(token, account_number)
 
     @staticmethod
     def load_credentials_file(token_file_path):
@@ -102,7 +109,7 @@ class PySocialWatcher:
         return pd.DataFrame(json_response["data"])
 
     @staticmethod
-    def get_kml_given_geolocation(location_type, list_location_codes):
+    def get_KML_given_geolocation(location_type, list_location_codes):
         """
 
         :param
@@ -144,10 +151,13 @@ class PySocialWatcher:
         locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, ["region"],
                                                                                     country_code=country_code)
         print("Obtained %d regions." % (locations.shape[0]))
-        kmls = PySocialWatcher.get_kml_given_geolocation("regions", list(locations["key"].values))
+        if locations.empty:
+            return None
+
+        kmls = PySocialWatcher.get_KML_given_geolocation("regions", list(locations["key"].values))
         print("Obtained %d KMLs." % (kmls.shape[0]))
 
-        return locations, kmls
+        return pd.merge(locations, kmls, on=["key", "name"])
 
     @staticmethod
     def get_all_cities_given_country_code(country_code):
@@ -314,6 +324,49 @@ class PySocialWatcher:
         collection_dataframe = PySocialWatcher.perform_collection_data_on_facebook(collection_dataframe)
         return collection_dataframe
 
+    @staticmethod
+    def __df_to_geojson(row):
+        out = {}
+
+        out["type"] = "Feature"
+        if "country" in row:
+            out["country"] = row["country"]
+            out["id"] = row["name"] + ", " + row["country"]
+        else:
+            out["id"] = row["name"]
+
+        out["properties"] = {"name": row["name"]}
+        if "key" in row:
+            out["properties"]["key"] = row["key"]
+        if "country" in row:
+            out["properties"]["country"] = row["country"]
+
+        skml = row["kml"]
+
+        xml_kml = ET.fromstring("<root>" + skml + "</root>")
+        coordinates = xml_kml.findall(".//coordinates")
+
+        list_of_coords = []
+        for c in coordinates:
+            s = c.text
+            coor = []
+            for pair in s.split():
+                a, b = map(float, pair.split(","))
+                coor.append([a, b])
+            list_of_coords.append(coor)
+
+        polygon = {"type": "Polygon", "coordinates": list_of_coords}
+        out["geometry"] = polygon
+        return out
+
+    @staticmethod
+    def transform_KML_into_geojson(df, outputname):
+        df["country"] = df["country_code"].apply(double_country_conversion)
+        features = list(df.apply(lambda x: PySocialWatcher.__df_to_geojson(x), axis=1))
+        output = {"type": "FeatureCollection", "features": features}
+        with open(outputname, "w") as f:
+            json_string = json.dumps(output)
+            f.write(json_string)
 
     @staticmethod
     def print_bad_joke():

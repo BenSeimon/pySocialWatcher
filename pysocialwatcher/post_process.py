@@ -71,16 +71,25 @@ def process_device(x):
 
 
 def post_process_df_collection(df):
-    ages = df["ages_ranges"].apply(lambda x: process_age(x))
-    locations = df["geo_locations"].apply(lambda x: process_location(x))
+
+    # Process gender information
     gender = df["genders"].apply(lambda x: {0: "both", 1: "male", 2: "female"}[x])
-    device = df["access_device"].apply(lambda x: process_device(x))
-
     df["Gender"] = gender
-    df["Device"] = device
 
+    # Process access device, if available
+    if "access_device" in df:
+        device = df["access_device"].apply(lambda x: process_device(x))
+        df["Device"] = device
+
+    # Process age information
+    ages = df["ages_ranges"].apply(lambda x: process_age(x))
     df = pd.merge(df, ages, left_index=True, right_index=True)
+
+    # Process location information
+    locations = df["geo_locations"].apply(lambda x: process_location(x))
     df = pd.merge(df, locations, left_index=True, right_index=True)
+
+    # TODO: process other possible fields
 
     drop_cols = ["genders"]
     df = df.drop(columns=drop_cols)
@@ -88,10 +97,10 @@ def post_process_df_collection(df):
     return df
 
 
-def combine_cols(df_in, cols):
+def combine_cols(df_in, cols, input_cols=["Key", "mau_audience"], output_col="combo"):
     unique_values = []
 
-    df = df_in[[*cols, "Key", "mau_audience"]].copy()
+    df = df_in[[*cols, *input_cols]].copy()
 
     # We first get the unique values for each one of the cols
     for c in cols:
@@ -111,7 +120,7 @@ def combine_cols(df_in, cols):
             dfcut = dfcut[dfcut[c] == v]
 
         dfcut = dfcut.drop(columns=cols)
-        dfcut["combo"] = combo_string
+        dfcut[output_col] = combo_string
         results.append(dfcut)
 
     return pd.concat(results).reset_index(drop=True)

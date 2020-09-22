@@ -2,6 +2,7 @@ import json
 
 
 def get_predifined_behavior(option):
+
     if option == "connectivity":
         bgrp = BehaviorGroup("access_device")
 
@@ -24,8 +25,30 @@ def get_predifined_behavior(option):
         bgrps.add(bgrp)
         return bgrps
 
+    elif option == "ios":
+        bgrp = BehaviorGroup("access_device")
+
+        b_ios = BehaviorList(list_name="iOS", operator="or")
+        b_ios.add(Behavior(6004384041172))
+
+        b_android = BehaviorList(list_name="Android", operator="or")
+        b_android.add(Behavior(6004386044572))
+
+        b_other = BehaviorList(list_name="Other", operator="not")
+        b_other.add(Behavior(6004384041172))
+        b_other.add(Behavior(6004386044572))
+
+        bgrp.add(b_ios)
+        bgrp.add(b_android)
+        bgrp.add(b_other)
+        bgrp.add(None)
+
+        bgrps = BehaviorGroups()
+        bgrps.add(bgrp)
+        return bgrps
+
     else:
-        print("Option %s is not regocnized." % (option))
+        print("Option %s is not recognized." % option)
 
     return None
 
@@ -61,6 +84,15 @@ class BehaviorGroup(object):
         self.behavior_lists = []
 
     def add(self, behavior_list: BehaviorList):
+        # Check if behavior is already included in the list
+        for bl in self.behavior_lists:
+            if (behavior_list is None and bl is None):
+                print("Behavior List None is already included in the list.")
+                return
+            elif (behavior_list is not None and bl is not None and behavior_list.name == bl.name):
+                print("Behavior List named %s is already included in the list." % bl.name)
+                return
+
         self.behavior_lists.append(behavior_list)
 
 
@@ -71,6 +103,17 @@ class BehaviorGroups(object):
 
     def add(self, behavior_group: BehaviorGroup):
         self.behavior_groups.append(behavior_group)
+
+    def merge(self, another_behavior_groups):
+        for grp_another in another_behavior_groups.behavior_groups:
+            for grp_me in self.behavior_groups:
+                # same group, just add it
+                if grp_another.group_name == grp_me.group_name:
+                    print("Found it!")
+                    for blist in grp_another.behavior_lists:
+                        print("Adding ", blist)
+                        grp_me.add(blist)
+
 
     def jsonfy(self):
         return dict(
@@ -143,18 +186,18 @@ class LocationList(object):
         df = df_in[~df_in["key"].isnull()].copy()
 
         # That is a country collection. Keys are country codes and type is not available.
-        if "type" not in df:
-            df = df.assign(type="country")   # same as df["type"] == "country"
-
-        else:
+        if "type" in df:
             df["key"] = df["key"].astype(int)
 
         if "region_id" in df:
             df["region_id"] = df["region_id"].astype(int)
 
         for idx, row in df.iterrows():
-            # print(row)
-            if row["type"] == "region":
+            # TODO: include other types as zip or custom
+            if "type" not in row:  # country does not have type.
+                loc = Location(loc_type="countries", values=[row["key"]])
+
+            elif row["type"] == "region":
                 loc = Location(loc_type="regions",
                                values=[{"key": row["key"], "country_code": row["country_code"], "name": row["name"]}])
 
@@ -164,9 +207,6 @@ class LocationList(object):
                                         "country_code": row["country_code"], "name": row["name"],
                                         "distance_unit": "kilometer", "radius": 0}]
                                )
-
-            elif row["type"] == "country":
-                loc = Location(loc_type="countries", values=[row["key"]])
             self.location_list.append(loc)
 
     def jsonfy(self):
@@ -207,7 +247,6 @@ def get_location_list_from_df(df_in):
     df["region_id"] = df["region_id"].astype(int)
 
     for idx, row in df.iterrows():
-        # print(row)
         if row["type"] == "region":
             loc = Location(loc_type="regions",
                        values=[{"key": row["key"], "country_code": row["country_code"], "name": row["name"]}])
