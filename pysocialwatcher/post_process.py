@@ -45,6 +45,18 @@ def process_location(x):
             country_codes.append(region["country_code"])
             fullloc.append("%s, %s" % (region["name"], region["country_code"]))
 
+    elif loc_type == "countries":
+        countries = s["values"]
+        # Multiple regions are not supported ***yet***
+        for country in countries:
+            loctype.append("country")
+            keys.append(country)
+            regions.append(None)
+            region_ids.append(None)
+            names.append(country)
+            country_codes.append(country)
+            fullloc.append(country)
+
     return pd.Series({"Key": keys[0], "Region": regions[0], "RegionId": region_ids[0],
                       "Name": names[0], "CountryCode": country_codes[0],
                       "LocationType": loctype[0], "FullLocation": fullloc[0]})

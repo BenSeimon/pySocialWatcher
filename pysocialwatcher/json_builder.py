@@ -141,15 +141,22 @@ class LocationList(object):
     def get_location_list_from_df(self, df_in):
 
         df = df_in[~df_in["key"].isnull()].copy()
-        df["key"] = df["key"].astype(int)
-        df["region_id"] = df["region_id"].astype(int)
+
+        # That is a country collection. Keys are country codes and type is not available.
+        if "type" not in df:
+            df = df.assign(type="country")   # same as df["type"] == "country"
+
+        else:
+            df["key"] = df["key"].astype(int)
+
+        if "region_id" in df:
+            df["region_id"] = df["region_id"].astype(int)
 
         for idx, row in df.iterrows():
             # print(row)
             if row["type"] == "region":
                 loc = Location(loc_type="regions",
                                values=[{"key": row["key"], "country_code": row["country_code"], "name": row["name"]}])
-                self.location_list.append(loc)
 
             elif row["type"] == "city":
                 loc = Location(loc_type="cities",
@@ -157,8 +164,10 @@ class LocationList(object):
                                         "country_code": row["country_code"], "name": row["name"],
                                         "distance_unit": "kilometer", "radius": 0}]
                                )
-                self.location_list.append(loc)
 
+            elif row["type"] == "country":
+                loc = Location(loc_type="countries", values=[row["key"]])
+            self.location_list.append(loc)
 
     def jsonfy(self):
         return [location.jsonfy() for location in self.location_list]
