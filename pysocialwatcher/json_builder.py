@@ -121,6 +121,40 @@ class BehaviorGroups(object):
         )
 
 
+class Scholarity(object):
+
+    def __init__(self, name: str, operator: str, values: list):
+        self.name = name
+        self.values = values
+        self.operator = operator
+
+    def jsonfy(self):
+        return {"name": self.name, self.operator: [v for v in self.values]}
+
+    @staticmethod
+    def from_pre_defined_list(name):
+        if name.lower().replace("_","").replace(" ", "") == "nodegree":
+            return Scholarity("No Degree", "or", [1,12,13])
+        elif name.lower().replace("_", "").replace(" ", "") == "highschool":
+            return Scholarity("High School", "or", [2, 4, 5, 6, 10])
+        elif name.lower().replace("_", "").replace(" ", "") == "graduated":
+            return Scholarity("Graduated", "or", [3, 7, 8, 9, 11])
+        else:
+            raise ValueError("Could not find %s in the pre-defined list. "
+                             "Options are: no_degree, high_school or graduated" % (name))
+
+
+class ScholarityList(object):
+
+    def __init__(self):
+        self.scholarity_list = []
+
+    def add(self, scholarity: Scholarity):
+        self.scholarity_list.append(scholarity)
+
+    def jsonfy(self):
+        return [scholarity.jsonfy() if scholarity is not None else None for scholarity in self.scholarity_list]
+
 class Genders(object):
 
     def __init__(self, male: bool = False, female: bool = False, combined: bool = False):
@@ -216,12 +250,13 @@ class LocationList(object):
 class JSONBuilder:
 
     def __init__(self, name: str, location_list: LocationList, age_list: AgeList, genders: Genders,
-                 behavior_groups: BehaviorGroups = None):
+                 behavior_groups: BehaviorGroups = None, scholarities: ScholarityList = None):
         self.name = name
         self.age_list = age_list
         self.location_list = location_list
         self.genders = genders
         self.behavior_groups = behavior_groups
+        self.scholarities = scholarities
 
     def jsonfy(self, filename=None):
         out = {"name": self.name,
@@ -231,6 +266,9 @@ class JSONBuilder:
 
         if self.behavior_groups is not None:
             out["behavior"] = self.behavior_groups.jsonfy()
+
+        if self.scholarities is not None:
+            out["scholarities"] = self.scholarities.jsonfy()
 
         if filename:
             with open(filename, 'w') as outfile:
