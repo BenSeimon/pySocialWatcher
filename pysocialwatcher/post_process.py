@@ -70,6 +70,14 @@ def process_device(x):
     return s["name"] if "name" in s else None
 
 
+def process_scholarities(x):
+    if isinstance(x, float) and np.isnan(x):
+        return "AllDegrees"
+
+    s = ast.literal_eval(x)
+    return s["name"] if "name" in s else None
+
+
 def post_process_df_collection(df):
 
     # Process gender information
@@ -88,6 +96,10 @@ def post_process_df_collection(df):
     # Process location information
     locations = df["geo_locations"].apply(lambda x: process_location(x))
     df = pd.merge(df, locations, left_index=True, right_index=True)
+
+    if "scholarities" in df:
+        device = df["scholarities"].apply(lambda x: process_scholarities(x))
+        df["Education"] = device
 
     # TODO: process other possible fields
 
