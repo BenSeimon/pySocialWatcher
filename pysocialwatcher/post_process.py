@@ -78,6 +78,14 @@ def process_scholarities(x):
     return s["name"] if "name" in s else None
 
 
+def process_citizenship(x):
+    if isinstance(x, float) and np.isnan(x):
+        return "AllCitizens"
+
+    s = ast.literal_eval(x)
+    return s["name"] if "name" in s else None
+
+
 def post_process_df_collection(df):
 
     # Process gender information
@@ -100,6 +108,10 @@ def post_process_df_collection(df):
     if "scholarities" in df:
         device = df["scholarities"].apply(lambda x: process_scholarities(x))
         df["Education"] = device
+
+    if "citizenship" in df:
+        citizenship = df["citizenship"].apply(lambda x: process_citizenship(x))
+        df["Citizenship"] = citizenship
 
     # TODO: process other possible fields
 
