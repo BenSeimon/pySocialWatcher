@@ -1,8 +1,9 @@
 import json
+from typing import Union
+import math
 
 
-def get_predifined_behavior(option):
-
+def get_predefined_behavior(option):
     if option == "connectivity":
         bgrp = BehaviorGroup("access_device")
 
@@ -25,7 +26,7 @@ def get_predifined_behavior(option):
         bgrps.add(bgrp)
         return bgrps
 
-    elif option == "ios":
+    elif option in ["phone", "ios"]:
         bgrp = BehaviorGroup("access_device")
 
         b_ios = BehaviorList(list_name="iOS", operator="or")
@@ -109,11 +110,8 @@ class BehaviorGroups(object):
             for grp_me in self.behavior_groups:
                 # same group, just add it
                 if grp_another.group_name == grp_me.group_name:
-                    print("Found it!")
                     for blist in grp_another.behavior_lists:
-                        print("Adding ", blist)
                         grp_me.add(blist)
-
 
     def jsonfy(self):
         return dict(
@@ -133,8 +131,8 @@ class Scholarity(object):
 
     @staticmethod
     def from_pre_defined_list(name):
-        if name.lower().replace("_","").replace(" ", "") == "nodegree":
-            return Scholarity("No Degree", "or", [1,12,13])
+        if name.lower().replace("_", "").replace(" ", "") == "nodegree":
+            return Scholarity("No Degree", "or", [1, 12, 13])
         elif name.lower().replace("_", "").replace(" ", "") == "highschool":
             return Scholarity("High School", "or", [2, 4, 5, 6, 10])
         elif name.lower().replace("_", "").replace(" ", "") == "graduated":
@@ -154,6 +152,7 @@ class ScholarityList(object):
 
     def jsonfy(self):
         return [scholarity.jsonfy() if scholarity is not None else None for scholarity in self.scholarity_list]
+
 
 class Genders(object):
 
@@ -212,10 +211,34 @@ class LocationList(object):
     def __init__(self):
         self.location_list = []
 
-    def add(self, location: Location):
-        self.location_list.append(location)
+    def add(self, location: Union[Location, 'LocationList']):
+        if isinstance(location, LocationList):
+            for loc in location.location_list:
+                self.add(loc)
 
-    def get_location_list_from_df(self, df_in):
+        elif isinstance(location, Location):
+            self.location_list.append(location)
+
+        else:
+            print("ERROR: Location List did not expect an input of type %s." % (type(location)))
+
+    def split(self, n):
+        """
+        Split the list of locations into N pieces
+        :param n:
+        :return:
+        """
+        nlocations = len(self.location_list)
+        step = math.ceil(nlocations / n)
+        result = []
+        for i in range(0, nlocations, step):
+            ll = LocationList()
+            for j in range(i, min(i + step, nlocations)):
+                ll.add(self.location_list[j])
+            result.append(ll)
+        return result
+
+    def get_location_list_from_df(self, df_in, city_radius=0):
 
         df = df_in[~df_in["key"].isnull()].copy()
 
@@ -239,7 +262,7 @@ class LocationList(object):
                 loc = Location(loc_type="cities",
                                values=[{"key": row["key"], "region": row["region"], "region_id": row["region_id"],
                                         "country_code": row["country_code"], "name": row["name"],
-                                        "distance_unit": "kilometer", "radius": 0}]
+                                        "distance_unit": "kilometer", "radius": city_radius}]
                                )
             self.location_list.append(loc)
 
@@ -247,18 +270,67 @@ class LocationList(object):
         return [location.jsonfy() for location in self.location_list]
 
 
+class Language(object):
+    def __init__(self, lang_name: str, values: list):
+        self.location = {"name": lang_name, "values": values}
+
+    def jsonfy(self):
+        return self.location
+
+
+class LanguageList(object):
+    def __init__(self):
+        self.langs = []
+
+    def add(self, lang: Language):
+        self.langs.append(lang)
+
+    def add_predefined(self, lang: str):
+        predefined = {"english": Language("English", [1001]),
+                      "spanish": Language("Spanish", [1002]),
+                      "french": Language("French", [1003]),
+                      "chinese": Language("Chinese", [1004]),
+                      "portuguese": Language("Portuguese", [1005]),
+                      "arabic": Language("Arabic", [28]),
+                      "italian": Language("Italian", [10]),
+                      "german": Language("German", [5]),
+                      "dutch": Language("Dutch", [14]),
+                      }
+
+        if lang.lower() not in predefined.keys():
+            print("Language %s is not in the predefined list '%s'" % (lang, predefined.keys()))
+            return
+
+        self.add(predefined[lang.lower()])
+
+    def jsonfy(self):
+        return [lang.jsonfy() if lang is not None else None for lang in self.langs]
+
+
 class JSONBuilder:
 
     def __init__(self, name: str, location_list: LocationList, age_list: AgeList, genders: Genders,
-                 behavior_groups: BehaviorGroups = None, scholarities: ScholarityList = None):
+                 behavior_groups: BehaviorGroups = None, scholarities: ScholarityList = None,
+                 languages: LanguageList = None):
+
         self.name = name
         self.age_list = age_list
         self.location_list = location_list
         self.genders = genders
         self.behavior_groups = behavior_groups
         self.scholarities = scholarities
+        self.languages = languages
 
-    def jsonfy(self, filename=None):
+    def jsonfy(self, filename=None, split_into_n_pieces=1):
+        """
+        This creates as many pieces of json as possible using filenme_<piece_num> if split_into_pieces > 1.
+        Each one of the n pieces will have a 1/n of the locations.
+
+        :param filename:
+        :param split_into_n_pieces:
+        :return:
+        """
+
         out = {"name": self.name,
                "geo_locations": self.location_list.jsonfy(),
                "ages_ranges": self.age_list.jsonfy(),
@@ -270,12 +342,25 @@ class JSONBuilder:
         if self.scholarities is not None:
             out["scholarities"] = self.scholarities.jsonfy()
 
+        if self.languages is not None:
+            out["languages"] = self.languages.jsonfy()
+
         if filename:
-            with open(filename, 'w') as outfile:
-                json.dump(out, outfile, indent=4)
-            print("Created file %s." % filename)
+            if split_into_n_pieces == 1:
+                with open(filename, 'w') as outfile:
+                    json.dump(out, outfile, indent=4)
+                print("Created file %s." % filename)
+            else:
+                loclists = self.location_list.split(split_into_n_pieces)
+                for i, piece in enumerate(loclists):
+                    out["geo_locations"] = piece.jsonfy()
+                    f = filename + "_%d" % i
+                    with open(f, 'w') as outfile:
+                        json.dump(out, outfile, indent=4)
+                    print("Created file %s." % f)
 
         return out
+
 
 def get_location_list_from_df(df_in):
     loc_list = LocationList()
@@ -287,14 +372,14 @@ def get_location_list_from_df(df_in):
     for idx, row in df.iterrows():
         if row["type"] == "region":
             loc = Location(loc_type="regions",
-                       values=[{"key": row["key"], "country_code": row["country_code"], "name": row["name"]}])
+                           values=[{"key": row["key"], "country_code": row["country_code"], "name": row["name"]}])
             loc_list.add(loc)
 
         elif row["type"] == "city":
             loc = Location(loc_type="cities",
                            values=[{"key": row["key"], "region": row["region"], "region_id": row["region_id"],
                                     "country_code": row["country_code"], "name": row["name"],
-                                    "distance_unit":"kilometer", "radius": 0}]
+                                    "distance_unit": "kilometer", "radius": 0}]
                            )
             loc_list.add(loc)
 

@@ -105,13 +105,20 @@ def post_process_df_collection(df):
     locations = df["geo_locations"].apply(lambda x: process_location(x))
     df = pd.merge(df, locations, left_index=True, right_index=True)
 
+    # Process education tag if information is available
     if "scholarities" in df:
         device = df["scholarities"].apply(lambda x: process_scholarities(x))
         df["Education"] = device
 
+    # Process citizenship tag if information is available
     if "citizenship" in df:
         citizenship = df["citizenship"].apply(lambda x: process_citizenship(x))
         df["Citizenship"] = citizenship
+
+    # Process language tag if information is available
+    if "languages" in df:
+        languages = df["languages"].apply(lambda x: process_languages(x))
+        df["Languages"] = languages
 
     # TODO: process other possible fields
 
