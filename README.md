@@ -23,11 +23,9 @@
 
 **Package Name:** pysocialwatcher
 
-**Facebook Ads API version supported:** 2.9
-
 **License:** MIT
 
-**Python Version:** 2.7
+**Python Version:** 3.8
 
 
 ### What is this for
@@ -59,10 +57,8 @@ Ad Targeting Search API: https://developers.facebook.com/docs/marketing-api/targ
     ```
 
 ### Install
-    git clone https://github.com/maraujo/pySocialWatcher.git
-    cd pySocialWatcher
-    pip install -r requirements.txt
-    python setup.py install
+    pip install git+https://github.com/joaopalotti/pySocialWatcher.git@master
+   
     
 ### Quick Start
 You should have a .csv file with your Facebook tokens and accountIDs.
