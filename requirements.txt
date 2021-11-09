@@ -1,5 +1,4 @@
 codecov==2.0.5
-coloredlogs==14.0
 coverage==4.2
 cython==0.27.3
 numpy==1.19.2
@@ -8,3 +7,4 @@ pytest_cov==2.4.0
 requests==2.20.0
 setuptools==28.2.0
 tabulate>=0.8.7
+coloredlogs>=14.0

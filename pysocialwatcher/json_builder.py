@@ -112,6 +112,8 @@ class BehaviorGroups(object):
                 if grp_another.group_name == grp_me.group_name:
                     for blist in grp_another.behavior_lists:
                         grp_me.add(blist)
+                else:
+                    self.add(grp_another)
 
     def jsonfy(self):
         return dict(
@@ -347,6 +349,8 @@ class JSONBuilder:
 
         if filename:
             if split_into_n_pieces == 1:
+                if not filename.endswith(".json"):
+                    filename += ".json"
                 with open(filename, 'w') as outfile:
                     json.dump(out, outfile, indent=4)
                 print("Created file %s." % filename)
@@ -354,7 +358,10 @@ class JSONBuilder:
                 loclists = self.location_list.split(split_into_n_pieces)
                 for i, piece in enumerate(loclists):
                     out["geo_locations"] = piece.jsonfy()
-                    f = filename + "_%d" % i
+                    if filename.endswith(".json"):
+                        filename = filename.rsplit(".json")[0]
+
+                    f = filename + "_%d.json" % i
                     with open(f, 'w') as outfile:
                         json.dump(out, outfile, indent=4)
                     print("Created file %s." % f)

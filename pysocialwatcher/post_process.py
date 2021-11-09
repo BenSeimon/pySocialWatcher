@@ -30,8 +30,9 @@ def process_location(x):
             regions.append(city["region"])
             region_ids.append(city["region_id"])
             names.append(city["name"])
-            country_codes.append(city["country_code"])
-            fullloc.append("%s, %s, %s" % (city["name"], city["region"], city["country_code"]))
+            country = city["country_code"] if "country_code" in city else city["country"] if "country" in city else None
+            country_codes.append(country)
+            fullloc.append("%s, %s, %s" % (city["name"], city["region"], country))
 
     elif loc_type == "regions":
         regs = s["values"]
@@ -42,8 +43,9 @@ def process_location(x):
             regions.append(region["name"])
             region_ids.append(region["key"])
             names.append(region["name"])
-            country_codes.append(region["country_code"])
-            fullloc.append("%s, %s" % (region["name"], region["country_code"]))
+            country = region["country_code"] if "country_code" in region else region["country"] if "country" in region else None
+            country_codes.append(country)
+            fullloc.append("%s, %s" % (region["name"], country) if country else "%s" % region["name"])
 
     elif loc_type == "countries":
         countries = s["values"]
@@ -57,15 +59,36 @@ def process_location(x):
             country_codes.append(country)
             fullloc.append(country)
 
-    return pd.Series({"Key": keys[0], "Region": regions[0], "RegionId": region_ids[0],
-                      "Name": names[0], "CountryCode": country_codes[0],
-                      "LocationType": loctype[0], "FullLocation": fullloc[0]})
+    elif loc_type == "custom_locations":
+        locations = s["values"]
+        for loc in locations:
+            loctype.append("custom")
+            keys.append(loc["name"])
+            regions.append(None)
+            region_ids.append(None)
+            country = "country_code" if "country_code" in loc else "country" if "country" in loc else None
+            names.append(loc["name"])
+            country_codes.append(country)
+            fullloc.append(loc["name"])
+
+    keys = ', '.join(filter(None, keys)) if len(keys) > 1 else keys[0]
+    regions = ', '.join(filter(None, regions)) if len(regions) > 0 else regions[0]
+    region_ids = ', '.join(map(str,filter(None, region_ids))) if len(region_ids) > 0 else region_ids[0]
+    names = ', '.join(filter(None, names)) if len(names) > 0 else names[0]
+    country_codes = ', '.join(filter(None, country_codes)) if len(country_codes) > 0 else country_codes[0]
+    loctype = ', '.join(filter(None, loctype)) if len(loctype) > 0 else loctype[0]
+    fullloc = ', '.join(filter(None, fullloc)) if len(fullloc) > 0 else fullloc[0]
+
+    names = s["pySocialWatcherReference"] if "pySocialWatcherReference" in s else names
+
+    return pd.Series({"Key": keys, "Region": regions, "RegionId": region_ids,
+                      "Name": names, "CountryCode": country_codes,
+                      "LocationType": loctype, "FullLocation": fullloc})
 
 
 def process_device(x):
     if isinstance(x, float) and np.isnan(x):
         return "AllDevices"
-
     s = ast.literal_eval(x)
     return s["name"] if "name" in s else None
 
@@ -73,7 +96,6 @@ def process_device(x):
 def process_scholarities(x):
     if isinstance(x, float) and np.isnan(x):
         return "AllDegrees"
-
     s = ast.literal_eval(x)
     return s["name"] if "name" in s else None
 
@@ -81,7 +103,13 @@ def process_scholarities(x):
 def process_citizenship(x):
     if isinstance(x, float) and np.isnan(x):
         return "AllCitizens"
+    s = ast.literal_eval(x)
+    return s["name"] if "name" in s else None
 
+
+def process_languages(x):
+    if isinstance(x, float) and np.isnan(x):
+        return "AllLanguages"
     s = ast.literal_eval(x)
     return s["name"] if "name" in s else None
 
