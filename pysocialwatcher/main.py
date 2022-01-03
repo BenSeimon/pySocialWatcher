@@ -264,7 +264,7 @@ class PySocialWatcher:
             print_collecting_progress(dataframe_with_uncompleted_requests, collection_dataframe)
             # Trigger requests
             rows_to_request = dataframe_with_uncompleted_requests.head(len(constants.TOKENS))
-            responses_list = trigger_request_process_and_return_response(rows_to_request)
+            responses_list = trigger_request_process_and_return_response(rows_to_request, constants.REACHESTIMATE_URL)
             # Save response in collection_dataframe
             save_response_in_dataframe(responses_list, collection_dataframe)
             processed_rows_after_saved += len(responses_list)
@@ -288,7 +288,7 @@ class PySocialWatcher:
     def check_tokens_account_valid():
         print_info("Testing tokens and account number")
         for token, account in constants.TOKENS:
-            send_dumb_query(token, account)
+            send_dumb_query(token, account, constants.REACHESTIMATE_URL)
         print_info("All tokens and respective account number are valid.")
 
     @staticmethod

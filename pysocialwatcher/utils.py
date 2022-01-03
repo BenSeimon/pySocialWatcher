@@ -103,7 +103,7 @@ def send_request(url, params, tryNumber=0):
         return handle_send_request_error(response, url, params, tryNumber)
 
 
-def call_request_fb(row, token, account):
+def call_request_fb(row, token, account, url):
     target_request = row[constants.TARGETING_FIELD]
     payload = {
         'optimization_goal': "AD_RECALL_LIFT",
@@ -112,7 +112,7 @@ def call_request_fb(row, token, account):
     }
     payload_str = str(payload)
     print_warning("\tSending in request: %s" % (payload_str))
-    url = constants.REACHESTIMATE_URL.format(account)
+    url = url.format(account)
     response = send_request(url, payload)
 
     if "x-business-use-case-usage" in response.headers:
@@ -131,9 +131,9 @@ def get_fake_response():
     return response
 
 
-def trigger_facebook_call(index, row, token, account, shared_queue):
+def trigger_facebook_call(index, row, token, account, shared_queue, url):
     try:
-        response = call_request_fb(row, token, account)
+        response = call_request_fb(row, token, account, url)
         shared_queue.put((index, response))
     except RequestException:
         print_warning("Warning Facebook Request Failed")
@@ -165,7 +165,7 @@ def add_published_platforms(dataframe, input_json):
     return dataframe
 
 
-def trigger_request_process_and_return_response(rows_to_request):
+def trigger_request_process_and_return_response(rows_to_request, url):
     process_manager = Manager()
     shared_queue = process_manager.Queue()
     shared_queue_list = []
@@ -173,7 +173,7 @@ def trigger_request_process_and_return_response(rows_to_request):
     # Trigger Process in rows
     for index, row in rows_to_request.iterrows():
         token, account = get_token_and_account_number_or_wait()
-        p = Process(target=trigger_facebook_call, args=(index, row, token, account, shared_queue))
+        p = Process(target=trigger_facebook_call, args=(index, row, token, account, shared_queue, url))
         p.start()
         p.join()
 
@@ -512,11 +512,11 @@ def print_collecting_progress(uncomplete_df, df):
                                                               full_size - uncomplete_df_size, full_size))
 
 
-def send_dumb_query(token, account):
+def send_dumb_query(token, account, url):
     try:
         row = pd.Series()
         row[constants.TARGETING_FIELD] = constants.DEFAULT_DUMB_TARGETING
-        call_request_fb(row, token, account)
+        call_request_fb(row, token, account, url)
     except Exception as error:
         print_warning("Token or Account Number Error:")
         print_warning("Token:" + token)
