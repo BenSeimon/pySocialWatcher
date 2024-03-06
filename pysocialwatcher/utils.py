@@ -311,14 +311,14 @@ def generate_collection_request_from_combination(current_combination, input_data
 def select_common_fields_in_targeting(targeting, input_combination_dictionary):
     # Selecting Geolocation
     geo_location = input_combination_dictionary[constants.INPUT_GEOLOCATION_FIELD]
-    if constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD in geo_location:
-        location_type = geo_location[constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD]
-    else:
-        location_type = constants.DEFAULT_GEOLOCATION_LOCATION_TYPE_FIELD
+    # if constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD in geo_location:
+    #     location_type = geo_location[constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD]
+    # else:
+    #     location_type = constants.DEFAULT_GEOLOCATION_LOCATION_TYPE_FIELD
 
     targeting[constants.API_GEOLOCATION_FIELD] = {
         geo_location["name"]: geo_location["values"],
-        constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD: location_type
+        # constants.INPUT_GEOLOCATION_LOCATION_TYPE_FIELD: location_type
     }
     # Selecting Age
     age_range = input_combination_dictionary[constants.INPUT_AGE_RANGE_FIELD]

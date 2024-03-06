@@ -87,10 +87,9 @@ class PySocialWatcher:
         return pd.DataFrame(json_response["data"])
 
     @staticmethod
-    def get_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None, limit=1000):
+    def get_geo_locations_given_query_and_location_type(query, region_id=None, country_code=None, limit=1000):
         request_payload = {
             'type': 'adgeolocation',
-            'location_types': location_types,
             'limit': limit,
             'access_token': get_token_and_account_number_or_wait()[0]
         }
@@ -148,7 +147,7 @@ class PySocialWatcher:
 
         :return:
         """
-        locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, ["region"],
+        locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, 
                                                                                     country_code=country_code)
         print("Obtained %d regions." % (locations.shape[0]))
         if locations.empty:
@@ -162,7 +161,7 @@ class PySocialWatcher:
     @staticmethod
     def get_all_cities_given_country_code(country_code):
         # Get all regions
-        regions = PySocialWatcher.get_geo_locations_given_query_and_location_type(None, ["region"],
+        regions = PySocialWatcher.get_geo_locations_given_query_and_location_type(None,
                                                                                   country_code=country_code)
         regions = regions[regions["country_code"] == country_code]
         dfs = []
@@ -184,7 +183,7 @@ class PySocialWatcher:
         for l in string.ascii_lowercase:
             print("Getting cities that start with %s" % (prefix + l))
             try:
-                df = PySocialWatcher.get_geo_locations_given_query_and_location_type(prefix + l, ["city"],
+                df = PySocialWatcher.get_geo_locations_given_query_and_location_type(prefix + l, 
                                                                                 country_code=country_code,
                                                                                 region_id=region_id)
             except FatalException:
@@ -207,8 +206,8 @@ class PySocialWatcher:
         print_dataframe(search_dataframe)
 
     @staticmethod
-    def print_geo_locations_given_query_and_location_type(query, location_types, region_id=None, country_code=None):
-        geo_locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(query, location_types, region_id=region_id, country_code=country_code)
+    def print_geo_locations_given_query_and_location_type(query, region_id=None, country_code=None):
+        geo_locations = PySocialWatcher.get_geo_locations_given_query_and_location_type(query, region_id=region_id, country_code=country_code)
         print_dataframe(geo_locations)
 
     @staticmethod
@@ -247,7 +246,7 @@ class PySocialWatcher:
         for index,combination in enumerate(input_combinations):
             print_info("Completed: {0:.2f}".format(100*index/float(len(input_combinations))))
             collection_queries.append(generate_collection_request_from_combination(combination, input_data_json))
-        dataframe = collection_dataframe.append(collection_queries)
+        dataframe = pd.concat([collection_dataframe, pd.DataFrame(collection_queries)])
         dataframe = add_timestamp(dataframe)
         dataframe = add_published_platforms(dataframe, input_data_json)
         if constants.SAVE_EMPTY:

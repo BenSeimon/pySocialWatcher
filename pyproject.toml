@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pysocialwatcher"
+version = "0.1.0"
+description = ""
+authors = ["BenSeimon <benjamin.seimon@bse.eu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+codecov = ">=2.0.5"
+coverage = ">=4.2"
+cython = ">=0.27.3"
+numpy = ">=1.19.2"
+pandas = ">=1.1.3"
+pytest-cov = ">=2.4.0"
+requests = ">=2.20.0"
+setuptools = ">=28.2.0"
+tabulate = ">=0.8.7"
+coloredlogs = ">=14.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
